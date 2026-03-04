@@ -140,6 +140,7 @@ st.sidebar.subheader("Diretrizes de importação")
 st.sidebar.markdown(
     """
     **1) funcionarios.csv (separador ;)**
+        - Extrair no Ahgora em: Relatórios > Funcionários
     - Colunas obrigatórias e nesta ordem:
       matricula, nome, cargo, localizacao, Data de Admissão, Data de Desligamento
     - matricula: somente números, sem espaços e sem texto
