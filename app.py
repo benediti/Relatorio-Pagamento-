@@ -179,11 +179,14 @@ if up_func and up_tot:
     if not col_matric_tot: missing.append("matricula (Totais)")
     if not col_val: missing.append("Valor Liquido (Totais)")
     if not col_pag: missing.append("DataPagto (Totais)")
-    if not col_ref: missing.append("Referencia (Totais)")
-
     if missing:
         st.error("Faltam colunas obrigatórias ou não consegui identificar automaticamente:\n- " + "\n- ".join(missing))
         st.stop()
+
+    referencia_manual = None
+    if not col_ref:
+        st.warning("Não encontrei a coluna Referencia em Totais. Informe uma data para usar como referência.")
+        referencia_manual = st.date_input("Data de referência", format="DD/MM/YYYY")
 
     # Padroniza matrículas
     func["_matricula"] = func[col_matric_func].map(to_str_matricula)
@@ -192,8 +195,11 @@ if up_func and up_tot:
     # Converte valores e datas
     tot["_valor_liquido"] = tot[col_val].map(parse_money_br)
     tot["_datapagto"] = tot[col_pag].map(parse_date)
-    # referência como string
-    tot["_referencia"] = tot[col_ref].astype(str).fillna("").str.strip()
+    # referência: usa coluna do arquivo ou data informada manualmente
+    if col_ref:
+        tot["_referencia"] = tot[col_ref].astype(str).fillna("").str.strip()
+    else:
+        tot["_referencia"] = pd.to_datetime(referencia_manual).strftime("%d/%m/%Y")
 
     func["_admissao"] = func[col_adm].map(parse_date)
     func["_deslig"] = func[col_desl].map(parse_date)
