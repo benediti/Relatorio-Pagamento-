@@ -25,6 +25,8 @@ st.markdown(
     """
 )
 
+st.info("1) Leia as diretrizes na barra lateral  •  2) Faça upload dos dois arquivos  •  3) Gere e exporte o relatório")
+
 # -----------------------
 # Helpers
 # -----------------------
@@ -134,6 +136,41 @@ def template_totais_excel_bytes():
         modelo.to_excel(writer, index=False, sheet_name="Totais")
     return output.getvalue()
 
+st.sidebar.subheader("Diretrizes de importação")
+st.sidebar.markdown(
+    """
+    **1) funcionarios.csv (separador ;)**
+    - Colunas obrigatórias e nesta ordem:
+      matricula, nome, cargo, localizacao, Data de Admissão, Data de Desligamento
+    - matricula: somente números, sem espaços e sem texto
+    - Datas: DD/MM/AAAA (ex.: 06/03/2026)
+
+    **2) Totais liquidos.xls/.xlsx (Phoenix)**
+    - Colunas obrigatórias: matricula, Valor Liquido, DataPagto
+    - Coluna opcional: Referencia
+    - Valor Liquido: 1882,59 ou 1882.59
+    - Remover a última linha de total do Phoenix
+
+    **Boas práticas**
+    - Não mesclar células no Excel
+    - Evitar linhas em branco antes do cabeçalho
+    """
+)
+
+st.sidebar.download_button(
+    "Baixar modelo funcionarios.csv",
+    data=template_funcionarios_csv_bytes(),
+    file_name="modelo_funcionarios.csv",
+    mime="text/csv",
+)
+st.sidebar.download_button(
+    "Baixar modelo Totais.xlsx",
+    data=template_totais_excel_bytes(),
+    file_name="modelo_totais.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+)
+st.sidebar.divider()
+
 def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
     def money_br(v):
         try:
@@ -160,41 +197,6 @@ def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
         topMargin=20,
         bottomMargin=20,
     )
-
-    st.sidebar.subheader("Diretrizes de importação")
-    st.sidebar.markdown(
-        """
-        **1) funcionarios.csv (separador ;)**
-        - Colunas obrigatórias e nesta ordem:
-          matricula, nome, cargo, localizacao, Data de Admissão, Data de Desligamento
-        - matricula: somente números, sem espaços e sem texto
-        - Datas: DD/MM/AAAA (ex.: 06/03/2026)
-
-        **2) Totais liquidos.xls/.xlsx (Phoenix)**
-        - Colunas obrigatórias: matricula, Valor Liquido, DataPagto
-        - Coluna opcional: Referencia
-        - Valor Liquido: 1882,59 ou 1882.59
-        - Remover a última linha de total do Phoenix
-
-        **Boas práticas**
-        - Não mesclar células no Excel
-        - Evitar linhas em branco antes do cabeçalho
-        """
-    )
-
-    st.sidebar.download_button(
-        "Baixar modelo funcionarios.csv",
-        data=template_funcionarios_csv_bytes(),
-        file_name="modelo_funcionarios.csv",
-        mime="text/csv",
-    )
-    st.sidebar.download_button(
-        "Baixar modelo Totais.xlsx",
-        data=template_totais_excel_bytes(),
-        file_name="modelo_totais.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    st.sidebar.divider()
 
     styles = getSampleStyleSheet()
     cell_style = styles["Normal"].clone("CellStyle")
