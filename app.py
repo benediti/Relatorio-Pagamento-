@@ -159,7 +159,7 @@ def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
         body_rows.append([Paragraph(html.escape(str(value)), cell_style) for value in row])
 
     total_row = [""] * len(headers)
-    total_row[5] = Paragraph("<b>TOTAL GERAL</b>", cell_style)
+    total_row[5] = Paragraph("<b>TOTAL DA FOLHA</b>", cell_style)
     total_row[6] = Paragraph(f"<b>{html.escape(total_fmt)}</b>", cell_style)
 
     data = [header_row] + body_rows + [total_row]
