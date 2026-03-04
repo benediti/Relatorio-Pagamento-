@@ -135,9 +135,22 @@ if up_func and up_tot:
         up_func.seek(0)
         func = pd.read_csv(up_func, sep=";", dtype=str)
 
-    # Lê totais (.xls ou .xlsx)
+    # Lê totais (.xls ou .xlsx), detectando a linha de cabeçalho
     try:
-        tot = pd.read_excel(up_tot)
+        up_tot.seek(0)
+        tot_raw = pd.read_excel(up_tot, header=None)
+
+        header_row = None
+        for i in range(len(tot_raw)):
+            if "matricula" in str(tot_raw.iloc[i].values).lower():
+                header_row = i
+                break
+
+        up_tot.seek(0)
+        if header_row is not None:
+            tot = pd.read_excel(up_tot, skiprows=header_row)
+        else:
+            tot = pd.read_excel(up_tot)
     except Exception as e:
         st.error(f"Não consegui ler o Excel de totais: {e}")
         st.stop()
