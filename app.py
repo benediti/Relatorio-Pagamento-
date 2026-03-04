@@ -1,5 +1,6 @@
 import io
 import re
+import html
 import pandas as pd
 import streamlit as st
 
@@ -134,6 +135,16 @@ def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
     )
 
     styles = getSampleStyleSheet()
+    cell_style = styles["Normal"].clone("CellStyle")
+    cell_style.fontName = "Helvetica"
+    cell_style.fontSize = 7
+    cell_style.leading = 8
+
+    header_style = styles["Normal"].clone("HeaderStyle")
+    header_style.fontName = "Helvetica-Bold"
+    header_style.fontSize = 8
+    header_style.leading = 9
+
     story = []
     story.append(Paragraph(f"<b>{title}</b>", styles["Title"]))
     if periodo:
@@ -142,16 +153,27 @@ def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
     story.append(Spacer(1, 10))
 
     headers = list(rel.columns)
-    data = [headers] + rel.astype(str).values.tolist()
+    header_row = [Paragraph(f"<b>{html.escape(str(h))}</b>", header_style) for h in headers]
+    body_rows = []
+    for row in rel.fillna("").astype(str).values.tolist():
+        body_rows.append([Paragraph(html.escape(str(value)), cell_style) for value in row])
 
-    col_widths = [55, 145, 125, 125, 78, 82, 78, 58, 70]
+    total_row = [""] * len(headers)
+    total_row[5] = Paragraph("<b>TOTAL GERAL</b>", cell_style)
+    total_row[6] = Paragraph(f"<b>{html.escape(total_fmt)}</b>", cell_style)
+
+    data = [header_row] + body_rows + [total_row]
+
+    col_widths = [45, 165, 115, 138, 66, 70, 78, 56, 55]
     table = Table(data, colWidths=col_widths, repeatRows=1)
+
+    total_row_idx = len(data) - 1
 
     table_style = [
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f4e79")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("FONTSIZE", (0, 0), (-1, -1), 7),
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
         ("ALIGN", (0, 1), (0, -1), "CENTER"),
         ("ALIGN", (6, 1), (6, -1), "RIGHT"),
@@ -163,6 +185,11 @@ def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
         ("RIGHTPADDING", (0, 0), (-1, -1), 5),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("BACKGROUND", (0, total_row_idx), (-1, total_row_idx), colors.HexColor("#EAF2FB")),
+        ("SPAN", (0, total_row_idx), (5, total_row_idx)),
+        ("ALIGN", (0, total_row_idx), (5, total_row_idx), "RIGHT"),
+        ("ALIGN", (6, total_row_idx), (6, total_row_idx), "RIGHT"),
+        ("LINEABOVE", (0, total_row_idx), (-1, total_row_idx), 1, colors.HexColor("#1f4e79")),
     ]
     table.setStyle(TableStyle(table_style))
 
