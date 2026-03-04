@@ -161,43 +161,40 @@ def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
         bottomMargin=20,
     )
 
-    with st.expander("Diretrizes dos arquivos de entrada"):
-        st.markdown(
-            """
-                    **1) funcionarios.csv (separador `;`)**
-                    - Usar **exatamente** estas colunas e **nesta ordem**:
-                        `matricula`, `nome`, `cargo`, `localizacao`, `Data de Admissão`, `Data de Desligamento`
-                    - `matricula`: preencher só com números, sem espaços e sem texto
-            - Datas: usar `DD/MM/AAAA` (ex.: `06/03/2026`)
+    st.sidebar.subheader("Diretrizes de importação")
+    st.sidebar.markdown(
+        """
+        **1) funcionarios.csv (separador ;)**
+        - Colunas obrigatórias e nesta ordem:
+          matricula, nome, cargo, localizacao, Data de Admissão, Data de Desligamento
+        - matricula: somente números, sem espaços e sem texto
+        - Datas: DD/MM/AAAA (ex.: 06/03/2026)
 
-                    **2) Totais liquidos.xls/.xlsx (exportado do Phoenix)**
-            - Colunas obrigatórias: `matricula`, `Valor Liquido`, `DataPagto`
-            - Coluna opcional: `Referencia` (se não existir, o app pede a data de referência)
-            - `Valor Liquido`: pode ser `1882,59` ou `1882.59`
-                    - Antes de enviar, remover a última linha de total do Phoenix (linha de somatório)
+        **2) Totais liquidos.xls/.xlsx (Phoenix)**
+        - Colunas obrigatórias: matricula, Valor Liquido, DataPagto
+        - Coluna opcional: Referencia
+        - Valor Liquido: 1882,59 ou 1882.59
+        - Remover a última linha de total do Phoenix
 
-            **Boas práticas**
-            - Não mesclar células no Excel
-            - Evitar linhas em branco antes do cabeçalho
-            - Manter nomes de colunas próximos aos exemplos abaixo
-            """
-        )
+        **Boas práticas**
+        - Não mesclar células no Excel
+        - Evitar linhas em branco antes do cabeçalho
+        """
+    )
 
-        t1, t2 = st.columns(2)
-        with t1:
-            st.download_button(
-                "Baixar modelo funcionarios.csv",
-                data=template_funcionarios_csv_bytes(),
-                file_name="modelo_funcionarios.csv",
-                mime="text/csv",
-            )
-        with t2:
-            st.download_button(
-                "Baixar modelo Totais.xlsx",
-                data=template_totais_excel_bytes(),
-                file_name="modelo_totais.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
+    st.sidebar.download_button(
+        "Baixar modelo funcionarios.csv",
+        data=template_funcionarios_csv_bytes(),
+        file_name="modelo_funcionarios.csv",
+        mime="text/csv",
+    )
+    st.sidebar.download_button(
+        "Baixar modelo Totais.xlsx",
+        data=template_totais_excel_bytes(),
+        file_name="modelo_totais.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    st.sidebar.divider()
 
     styles = getSampleStyleSheet()
     cell_style = styles["Normal"].clone("CellStyle")
@@ -268,11 +265,9 @@ def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
 # -----------------------
 # Upload
 # -----------------------
-col1, col2 = st.columns(2)
-with col1:
-    up_func = st.file_uploader("Upload funcionarios.csv", type=["csv"])
-with col2:
-    up_tot = st.file_uploader("Upload Totais liquidos.xls/.xlsx", type=["xls", "xlsx"])
+st.sidebar.subheader("Importar arquivos")
+up_func = st.sidebar.file_uploader("Upload funcionarios.csv", type=["csv"])
+up_tot = st.sidebar.file_uploader("Upload Totais liquidos.xls/.xlsx", type=["xls", "xlsx"])
 
 st.divider()
 
