@@ -4,8 +4,10 @@ import pandas as pd
 import streamlit as st
 
 # (Opcional) PDF simples
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
-from reportlab.pdfgen import canvas
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
 
 st.set_page_config(page_title="Relatório de Pagamento", layout="wide")
@@ -69,6 +71,15 @@ def parse_money_br(x):
     except:
         return 0.0
 
+def format_money_br(x):
+    if pd.isna(x):
+        return "R$ 0,00"
+    try:
+        n = float(x)
+        return f"R$ {n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except Exception:
+        return "R$ 0,00"
+
 def parse_date(x):
     # pandas lida com datas variadas
     if pd.isna(x) or str(x).strip() == "":
@@ -96,36 +107,71 @@ def df_to_csv_bytes(df: pd.DataFrame):
     return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
 
 def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=landscape(A4))
-    width, height = landscape(A4)
+    def money_br(v):
+        try:
+            n = float(v)
+            return f"R$ {n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except Exception:
+            return str(v)
 
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(30, height - 30, title)
+    rel = df.copy()
+    rel["Valor Liquido"] = rel["Valor Liquido"].map(money_br)
 
-    c.setFont("Helvetica", 9)
-    y = height - 55
+    total = pd.to_numeric(df["Valor Liquido"], errors="coerce").fillna(0).sum()
+    total_fmt = money_br(total)
+    periodo = ""
+    if "Referencia" in df.columns and not df["Referencia"].dropna().empty:
+        periodo = str(df["Referencia"].dropna().iloc[0])
 
-    # cabeçalho
-    cols = list(df.columns)
-    col_text = " | ".join(cols)
-    c.drawString(30, y, col_text[:200])  # limita para caber
-    y -= 14
-    c.line(30, y, width - 30, y)
-    y -= 14
+    pdf_buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        pdf_buffer,
+        pagesize=landscape(A4),
+        leftMargin=20,
+        rightMargin=20,
+        topMargin=20,
+        bottomMargin=20,
+    )
 
-    # linhas (simples, sem tabela complexa)
-    for _, row in df.iterrows():
-        line = " | ".join([str(row[col]) for col in cols])
-        c.drawString(30, y, line[:200])
-        y -= 12
-        if y < 30:
-            c.showPage()
-            c.setFont("Helvetica", 9)
-            y = height - 30
+    styles = getSampleStyleSheet()
+    story = []
+    story.append(Paragraph(f"<b>{title}</b>", styles["Title"]))
+    if periodo:
+        story.append(Paragraph(f"Período de referência: <b>{periodo}</b>", styles["Normal"]))
+    story.append(Paragraph(f"Total líquido: <b>{total_fmt}</b>", styles["Normal"]))
+    story.append(Spacer(1, 10))
 
-    c.save()
-    return buf.getvalue()
+    headers = list(rel.columns)
+    data = [headers] + rel.astype(str).values.tolist()
+
+    col_widths = [55, 145, 125, 125, 78, 82, 78, 58, 70]
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+
+    table_style = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f4e79")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN", (0, 1), (0, -1), "CENTER"),
+        ("ALIGN", (6, 1), (6, -1), "RIGHT"),
+        ("ALIGN", (7, 1), (8, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D0D7DE")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F7F9FC")]),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]
+    table.setStyle(TableStyle(table_style))
+
+    story.append(table)
+
+    doc.build(story)
+    pdf_bytes = pdf_buffer.getvalue()
+    pdf_buffer.seek(0)
+    return pdf_bytes
 
 # -----------------------
 # Upload
@@ -242,7 +288,9 @@ if up_func and up_tot:
     if sort_cols:
         saida = saida.sort_values(by=sort_cols, kind="stable")
 
-    st.dataframe(saida, use_container_width=True, height=520)
+    saida_preview = saida.copy()
+    saida_preview["Valor Liquido"] = saida_preview["Valor Liquido"].map(format_money_br)
+    st.dataframe(saida_preview, use_container_width=True, height=520)
 
     total = saida["Valor Liquido"].sum()
     st.metric("Total (Valor Liquido)", f"R$ {total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
@@ -273,7 +321,7 @@ if up_func and up_tot:
         )
     with c3:
         st.download_button(
-            "Baixar PDF (simples)",
+            "Baixar PDF (executivo)",
             data=df_to_pdf_bytes(saida),
             file_name="relatorio_pagamento.pdf",
             mime="application/pdf"
