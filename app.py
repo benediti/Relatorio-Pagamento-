@@ -75,6 +75,17 @@ def parse_date(x):
         return pd.NaT
     return pd.to_datetime(x, errors="coerce", dayfirst=True)
 
+def format_mes_ano_pt(x):
+    meses = [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ]
+    dt = parse_date(x)
+    if pd.isna(dt):
+        s = str(x).strip()
+        return s
+    return f"{meses[dt.month - 1]}/{dt.year}"
+
 def df_to_excel_bytes(df: pd.DataFrame, sheet_name="Relatorio"):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
@@ -197,9 +208,9 @@ if up_func and up_tot:
     tot["_datapagto"] = tot[col_pag].map(parse_date)
     # referência: usa coluna do arquivo ou data informada manualmente
     if col_ref:
-        tot["_referencia"] = tot[col_ref].astype(str).fillna("").str.strip()
+        tot["_referencia"] = tot[col_ref].map(format_mes_ano_pt)
     else:
-        tot["_referencia"] = pd.to_datetime(referencia_manual).strftime("%d/%m/%Y")
+        tot["_referencia"] = format_mes_ano_pt(referencia_manual)
 
     func["_admissao"] = func[col_adm].map(parse_date)
     func["_deslig"] = func[col_desl].map(parse_date)
