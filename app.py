@@ -107,6 +107,33 @@ def df_to_excel_bytes(df: pd.DataFrame, sheet_name="Relatorio"):
 def df_to_csv_bytes(df: pd.DataFrame):
     return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
 
+def template_funcionarios_csv_bytes():
+    modelo = pd.DataFrame([
+        {
+            "matricula": "1234",
+            "nome": "NOME SOBRENOME",
+            "cargo": "AUXILIAR DE SERVIÇOS GERAIS",
+            "localizacao": "UNIDADE X - 123,45",
+            "Data de Admissão": "01/02/2024",
+            "Data de Desligamento": "",
+        }
+    ])
+    return df_to_csv_bytes(modelo)
+
+def template_totais_excel_bytes():
+    modelo = pd.DataFrame([
+        {
+            "matricula": "1234",
+            "Valor Liquido": "1882,59",
+            "DataPagto": "06/03/2026",
+            "Referencia": "Março/2026",
+        }
+    ])
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        modelo.to_excel(writer, index=False, sheet_name="Totais")
+    return output.getvalue()
+
 def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
     def money_br(v):
         try:
@@ -133,6 +160,44 @@ def df_to_pdf_bytes(df: pd.DataFrame, title="Relatório de Pagamento"):
         topMargin=20,
         bottomMargin=20,
     )
+
+    with st.expander("Diretrizes dos arquivos de entrada"):
+        st.markdown(
+            """
+                    **1) funcionarios.csv (separador `;`)**
+                    - Usar **exatamente** estas colunas e **nesta ordem**:
+                        `matricula`, `nome`, `cargo`, `localizacao`, `Data de Admissão`, `Data de Desligamento`
+                    - `matricula`: preencher só com números, sem espaços e sem texto
+            - Datas: usar `DD/MM/AAAA` (ex.: `06/03/2026`)
+
+                    **2) Totais liquidos.xls/.xlsx (exportado do Phoenix)**
+            - Colunas obrigatórias: `matricula`, `Valor Liquido`, `DataPagto`
+            - Coluna opcional: `Referencia` (se não existir, o app pede a data de referência)
+            - `Valor Liquido`: pode ser `1882,59` ou `1882.59`
+                    - Antes de enviar, remover a última linha de total do Phoenix (linha de somatório)
+
+            **Boas práticas**
+            - Não mesclar células no Excel
+            - Evitar linhas em branco antes do cabeçalho
+            - Manter nomes de colunas próximos aos exemplos abaixo
+            """
+        )
+
+        t1, t2 = st.columns(2)
+        with t1:
+            st.download_button(
+                "Baixar modelo funcionarios.csv",
+                data=template_funcionarios_csv_bytes(),
+                file_name="modelo_funcionarios.csv",
+                mime="text/csv",
+            )
+        with t2:
+            st.download_button(
+                "Baixar modelo Totais.xlsx",
+                data=template_totais_excel_bytes(),
+                file_name="modelo_totais.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
 
     styles = getSampleStyleSheet()
     cell_style = styles["Normal"].clone("CellStyle")
@@ -266,6 +331,12 @@ if up_func and up_tot:
     if missing:
         st.error("Faltam colunas obrigatórias ou não consegui identificar automaticamente:\n- " + "\n- ".join(missing))
         st.stop()
+
+    # Proteção: remove linha de total do Phoenix (quando vier no final ou no meio)
+    tot = tot[tot[col_matric_tot].notna()].copy()
+    mask_total_phoenix = tot[col_matric_tot].astype(str).str.strip().str.lower().str.contains("total", na=False)
+    if mask_total_phoenix.any():
+        tot = tot[~mask_total_phoenix].copy()
 
     referencia_manual = None
     if not col_ref:
